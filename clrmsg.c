@@ -1,14 +1,9 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <alloca.h>
 #include "clrmsg.h"
-
-#ifndef __STANDALONE_TEST__
-#include "debug.h"
-int (*cm_print)(const char *fmt, ...) = message;
-#else
-int (*cm_print)(const char *fmt, ...) = printf;
-#endif
 
 struct clr {
     const char *name;
@@ -35,138 +30,27 @@ struct clr {
 
 const char *reset = "\033[0m";
 
-struct parse_info { const char *s, *e, *token, *clr; };
-
-static void parse_next(struct parse_info *pi)
+char* cmfmt_generate(const char *fmt, char *cmfmt, int len)
 {
-    const char *p;
-    struct clr *c;
-    int l;
-
-    pi->clr = pi->token = 0;
-
-    for (p=pi->s; p<pi->e; ++p) {
-        if (*p == '%') {
-            if (p == pi->s)
-                continue;
-            pi->token = p;
-            pi->s = p;
-            pi->clr = 0;
-            return;
-        } else if (*p == '{') {
-            for (c=fg_clrs; c->name; ++c) {
-                l = strlen(c->name);
-                if (pi->e-p >= l+2 && *(p+l+1) == '}') {
-                    if (!strncmp(p+1, c->name, l)) {
-                        pi->token = p;
-                        pi->s = p + l +2;
-                        pi->clr = c->val;
-                        return;
-                    }
-                }
-            }
-        }
-    }
-
-    pi->s = pi->e;
+    return NULL;
 }
 
-const char* _cmFmt(const char *fmt, char *newFmt, size_t sz, int clear)
+int cmMsg_(int (*print)(const char *, ...), const char *fmt, ...)
 {
-    char *p=newFmt, *pe=p+sz-1;
-    struct parse_info pi;
-    const char *old_s;
-    int l, all = 0;
-#define COPY_P(s, len) do {\
-    l = (len); \
-    if (p + l >= pe) {\
-        *p = '\0';\
-        break;\
-    }\
-    memcpy(p, (s), l); \
-    p += l; \
-    *p = '\0'; \
-} while (0)
-
-#define COPY_P_COND(s, len) do {\
-    if (!clear) \
-        COPY_P(s, (len)); \
-} while (0)
-
-    if (!newFmt)
-        return fmt;
-
-    pi.s = fmt;
-    pi.e = fmt + strlen(fmt);
-    while (pi.s < pi.e) {
-        old_s = pi.s;
-        parse_next(&pi);
-
-        if (pi.clr) {
-            if (pi.token == fmt) {
-                all = 1;
-                COPY_P_COND(pi.clr, strlen(pi.clr));
-            } else {
-                if (!all)
-                    COPY_P_COND(pi.clr, strlen(pi.clr));
-                COPY_P(old_s, pi.token-old_s);
-                if (!all)
-                    COPY_P_COND(reset, strlen(reset));
-            }
-        } else {
-            if (pi.token) {
-                COPY_P(old_s, pi.token-old_s);
-            } else {
-                COPY_P(old_s, strlen(old_s));
-                if (all)
-                    COPY_P_COND(reset, strlen(reset));
-            }
-        }
-    }
-    return newFmt;
-}
-
-const char* cmFmt(const char *fmt, char *newFmt, size_t sz)
-{
-    return _cmFmt(fmt, newFmt, sz, 0);
-}
-
-const char* cmFmtClear(const char *fmt, char *newFmt, size_t sz)
-{
-    return _cmFmt(fmt, newFmt, sz, 1);
-}
-
-int cmPrintf(const char *fmt, ...)
-{
-    char msg[8192];
-    char cmfmt[1024];
+    char *msg = NULL;
     va_list args;
-    int rv;
 
-    va_start(args, fmt);
-    rv = vsnprintf(msg, sizeof(msg),
-            cmFmt(fmt, cmfmt, sizeof(cmfmt)), args);
-    va_end(args);
-
-    printf("%s", msg);
-    return rv;
-}
-
-int cmMsg_(int (*print)(const char *fmt, ...), const char *fmt, ...)
-{
-    char msg[8192];
-    char cmfmt[1024];
-    va_list args;
-    int rv;
-
-    if (!print)
+    if (!print || !fmt)
         return 0;
 
+    int len = strlen(fmt) * 2;
+    char *cmfmt = alloca(len);
+
     va_start(args, fmt);
-    rv = vsnprintf(msg, sizeof(msg),
-            cmFmt(fmt, cmfmt, sizeof(cmfmt)), args);
+    int rv = vasprintf(&msg, cmfmt_generate(fmt, cmfmt, len), args);
     va_end(args);
 
-    print("%s", msg);
+    if (rv != -1)
+        print("%s", msg);
     return rv;
 }
