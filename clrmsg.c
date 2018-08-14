@@ -57,10 +57,10 @@ static int lookup_color(const char *p, int len)
     switch (c) {
     case 'B':
     case 'b':
-        if (len <= 4 && !strncmp(p, "lack", len))
-            return c == 'B' ? CM_Black : CM_black;
         if (len <= 3 && !strncmp(p, "lue", len))
             return c == 'B' ? CM_Blue : CM_blue;
+        if (len <= 4 && !strncmp(p, "lack", len))
+            return c == 'B' ? CM_Black : CM_black;
         break;
     case 'R':
     case 'r':
@@ -110,8 +110,10 @@ static int parse(const char *str, int *start, int *len)
         clr = lookup_color(p, c-p);
         if (clr >= 0) {
             c++;
-            *start = c - str;
-            *len = e - c;
+            if ((*len = e - c) > 0)
+                *start = c - str;
+            else
+                *start = c - str + 1;
         }
     } else {
         clr = lookup_color(p, e-p);
