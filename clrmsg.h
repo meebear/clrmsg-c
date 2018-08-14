@@ -30,6 +30,26 @@
 #define BG_CYN "\033[1;46m"  // Cyan
 #define BG_WHT "\033[1;47m"  // White
 
+/* inline color formmating:
+ *  %{color}
+ *          -- start using 'color' from here on
+ *  %{color:content}
+ *          -- use 'color' for 'content' only, will be reset after
+ *             spaces in 'content' are reserved
+ *             printf format specifier can be used in 'content'
+ *
+ *  'color' can be in format
+ *      fgclr
+ *          -- font color
+ *      fgclr@bgclr
+ *          -- font color on top of background color
+ *      @bgclr
+ *          -- specify only background color
+ *
+ *  'color' eigher fgclr or bgclr should be 'Red', 'Green', 'blue', etc...
+ *          refer to comment of the defines above
+ */
+
 typedef int (*CmPrint)(const char *, ...);
 
 int cmMsg_(CmPrint print, const char *fmt, ...);
