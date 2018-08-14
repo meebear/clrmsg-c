@@ -21,6 +21,15 @@
 #define WHT_D "\033[2;37m"  // white
 #define RST   "\033[0m"     // Reset
 
+#define BG_BLA "\033[1;40m"  // Black
+#define BG_RED "\033[1;41m"  // Red
+#define BG_GRN "\033[1;42m"  // Green
+#define BG_YEL "\033[1;43m"  // Yellow
+#define BG_BLU "\033[1;44m"  // Blue
+#define BG_MAG "\033[1;45m"  // Magenta
+#define BG_CYN "\033[1;46m"  // Cyan
+#define BG_WHT "\033[1;47m"  // White
+
 typedef int (*CmPrint)(const char *, ...);
 
 int cmMsg_(CmPrint print, const char *fmt, ...);

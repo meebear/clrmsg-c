@@ -36,29 +36,33 @@ enum {
 };
 
 struct clr {
-    const char *name;
     const char *val;
+    const char *bg_val;
 } fg_clrs[] = {
-    [CM_Black]  = {"Black",  BLA},
-    [CM_Red]    = {"Red",    RED},
-    [CM_Green]  = {"Green",  GRN},
-    [CM_Yellow] = {"Yellow", YEL},
-    [CM_Blue]   = {"Blue",   BLU},
-    [CM_Magenta]= {"Magenta",MAG},
-    [CM_Cyan]   = {"Cyan",   CYN},
-    [CM_White]  = {"White",  WHT},
-    [CM_black]  = {"black",  BLA_D},
-    [CM_red]    = {"red",    RED_D},
-    [CM_green]  = {"green",  GRN_D},
-    [CM_yellow] = {"yellow", YEL_D},
-    [CM_blue]   = {"blue",   BLU_D},
-    [CM_magenta]= {"magenta",MAG_D},
-    [CM_cyan]   = {"cyan",   CYN_D},
-    [CM_white]  = {"white",  WHT_D},
-    [CM_Reset]  = {"",  RST},
+    [CM_Black]  = {BLA,   BG_BLA},
+    [CM_Red]    = {RED,   BG_RED},
+    [CM_Green]  = {GRN,   BG_GRN},
+    [CM_Yellow] = {YEL,   BG_YEL},
+    [CM_Blue]   = {BLU,   BG_BLU},
+    [CM_Magenta]= {MAG,   BG_MAG},
+    [CM_Cyan]   = {CYN,   BG_CYN},
+    [CM_White]  = {WHT,   BG_WHT},
+    [CM_black]  = {BLA_D, BG_BLA},
+    [CM_red]    = {RED_D, BG_RED},
+    [CM_green]  = {GRN_D, BG_GRN},
+    [CM_yellow] = {YEL_D, BG_YEL},
+    [CM_blue]   = {BLU_D, BG_BLU},
+    [CM_magenta]= {MAG_D, BG_MAG},
+    [CM_cyan]   = {CYN_D, BG_CYN},
+    [CM_white]  = {WHT_D, BG_WHT},
+    [CM_Reset]  = {RST, RST},
 };
 
-static int lookup_color(const char *p, int len)
+static inline const char* _clr(int clr, int is_fg) {
+    return is_fg ? fg_clrs[clr].val : fg_clrs[clr].bg_val;
+}
+
+static const char* lookup_color(const char *p, int len)
 {
     char c = p[0];
     p++;
@@ -67,57 +71,57 @@ static int lookup_color(const char *p, int len)
     case 'B':
     case 'b':
         if (len <= 3 && !strncmp(p, "lue", len))
-            return c == 'B' ? CM_Blue : CM_blue;
+            return c == 'B' ? _clr(CM_Blue, 1) : _clr(CM_blue, 1);
         if (len <= 4 && !strncmp(p, "lack", len))
-            return c == 'B' ? CM_Black : CM_black;
+            return c == 'B' ? _clr(CM_Black, 1) : _clr(CM_black, 1);
         break;
     case 'R':
     case 'r':
         if (len <= 2 && !strncmp(p, "ed", len))
-            return c == 'R' ? CM_Red : CM_red;
+            return c == 'R' ? _clr(CM_Red, 1) : _clr(CM_red, 1);
         break;
     case 'G':
     case 'g':
         if (len <= 4 && !strncmp(p, "reen", len))
-            return c == 'G' ? CM_Green : CM_green;
+            return c == 'G' ? _clr(CM_Green, 1) : _clr(CM_green, 1);
         break;
     case 'Y':
     case 'y':
         if (len <= 5 && !strncmp(p, "ellow", len))
-            return c == 'Y' ? CM_Yellow : CM_yellow;
+            return c == 'Y' ? _clr(CM_Yellow, 1) : _clr(CM_yellow, 1);
         break;
     case 'M':
     case 'm':
         if (len <= 6 && !strncmp(p, "agenta", len))
-            return c == 'M' ? CM_Magenta : CM_magenta;
+            return c == 'M' ? _clr(CM_Magenta, 1) : _clr(CM_magenta, 1);
         break;
     case 'C':
     case 'c':
         if (len <= 3 && !strncmp(p, "yan", len))
-            return c == 'C' ? CM_Cyan : CM_cyan;
+            return c == 'C' ? _clr(CM_Cyan, 1) : _clr(CM_cyan, 1);
         break;
     case 'W':
     case 'w':
         if (len <= 4 && !strncmp(p, "hite", len))
-            return c == 'W' ? CM_White : CM_white;
+            return c == 'W' ? _clr(CM_White, 1) : _clr(CM_white, 1);
         break;
     }
-    return -1;
+    return NULL;
 }
 
-static int parse(const char *str, int *start, int *len)
+static const char* parse(const char *str, int *start, int *len)
 {
     const char *p = str + 1;
     if (*p != '{')
-        return -1;
+        return NULL;
     char *e = strchr(++p, '}');
     if (!e)
-        return -1;
+        return NULL;
     char *c = strchr(p, ':');
-    int clr;
+    const char *clr = NULL;
     if (c && c < e) {
         clr = lookup_color(p, c-p);
-        if (clr >= 0) {
+        if (clr) {
             c++;
             if ((*len = e - c) > 0)
                 *start = c - str;
@@ -126,7 +130,7 @@ static int parse(const char *str, int *start, int *len)
         }
     } else {
         clr = lookup_color(p, e-p);
-        if (clr >= 0) {
+        if (clr) {
             *start = e - str + 1;
             *len = 0;
         }
@@ -149,13 +153,11 @@ char* cmfmt_parse(const char *fmt, char *cmfmt, int with_color)
                 off += len;
             }
             fmt = p;
-            int clr = parse(fmt, &start, &len);
-            if (clr != -1) {
-                //printf("color:%s start=%d len=%d\n", fg_clrs[clr].name, start, len);
+            const char *clr = parse(fmt, &start, &len);
+            if (clr) {
                 if (with_color) {
-                    p = fg_clrs[clr].val;
-                    tmp = strlen(p);
-                    memcpy(cmfmt + off, p, tmp);
+                    tmp = strlen(clr);
+                    memcpy(cmfmt + off, clr, tmp);
                     off += tmp;
                 }
                 fmt += start;
