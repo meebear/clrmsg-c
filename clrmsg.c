@@ -1,38 +1,168 @@
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <alloca.h>
 #include "clrmsg.h"
 
+enum {
+    CM_Black,
+    CM_Red,
+    CM_Green,
+    CM_Yellow,
+    CM_Blue,
+    CM_Magenta,
+    CM_Cyan,
+    CM_White,
+    CM_black,
+    CM_red,
+    CM_green,
+    CM_yellow,
+    CM_blue,
+    CM_magenta,
+    CM_cyan,
+    CM_white,
+    CM_Reset,
+};
+
 struct clr {
     const char *name;
     const char *val;
 } fg_clrs[] = {
-    {"Black",  "\033[1;30m"},
-    {"Red",    "\033[1;31m"},
-    {"Green",  "\033[1;32m"},
-    {"Yellow", "\033[1;33m"},
-    {"Blue",   "\033[1;34m"},
-    {"Magenta","\033[1;35m"},
-    {"Cyan",   "\033[1;36m"},
-    {"White",  "\033[1;37m"},
-    {"black",  "\033[2;30m"},
-    {"red",    "\033[2;31m"},
-    {"green",  "\033[2;32m"},
-    {"yellow", "\033[2;33m"},
-    {"blue",   "\033[2;34m"},
-    {"magenta","\033[2;35m"},
-    {"cyan",   "\033[2;36m"},
-    {"white",  "\033[2;37m"},
-    {NULL}
+    [CM_Black]  = {"Black",  BLA},
+    [CM_Red]    = {"Red",    RED},
+    [CM_Green]  = {"Green",  GRN},
+    [CM_Yellow] = {"Yellow", YEL},
+    [CM_Blue]   = {"Blue",   BLU},
+    [CM_Magenta]= {"Magenta",MAG},
+    [CM_Cyan]   = {"Cyan",   CYN},
+    [CM_White]  = {"White",  WHT},
+    [CM_black]  = {"black",  BLA_D},
+    [CM_red]    = {"red",    RED_D},
+    [CM_green]  = {"green",  GRN_D},
+    [CM_yellow] = {"yellow", YEL_D},
+    [CM_blue]   = {"blue",   BLU_D},
+    [CM_magenta]= {"magenta",MAG_D},
+    [CM_cyan]   = {"cyan",   CYN_D},
+    [CM_white]  = {"white",  WHT_D},
+    [CM_Reset]  = {"",  RST},
 };
 
-const char *reset = "\033[0m";
-
-char* cmfmt_generate(const char *fmt, char *cmfmt, int len)
+static int lookup_color(const char *p, int len)
 {
-    return NULL;
+    switch (p[0]) {
+    case 'B':
+    case 'b':
+        if (p[1] == 'l') {
+            if (p[2] == 'a')
+                return p[0] == 'B' ? CM_Black : CM_black;
+            else if (p[2] == 'u')
+                return p[0] == 'B' ? CM_Blue : CM_blue;
+        }
+        break;
+    case 'R':
+    case 'r':
+        if (p[1] == 'e' && p[2] == 'd')
+            return p[0] == 'R' ? CM_Red : CM_red;
+        break;
+    case 'G':
+    case 'g':
+        if (p[1] == 'r' && p[2] == 'e')
+            return p[0] == 'G' ? CM_Green : CM_green;
+        break;
+    case 'Y':
+    case 'y':
+        if (p[1] == 'e' && p[2] == 'l')
+            return p[0] == 'Y' ? CM_Yellow : CM_yellow;
+        break;
+    case 'M':
+    case 'm':
+        if (p[1] == 'a' && p[2] == 'g')
+            return p[0] == 'M' ? CM_Magenta : CM_magenta;
+        break;
+    case 'C':
+    case 'c':
+        if (p[1] == 'y' && p[2] == 'a')
+            return p[0] == 'C' ? CM_Cyan : CM_cyan;
+        break;
+    case 'W':
+    case 'w':
+        if (p[1] == 'h' && p[2] == 'i')
+            return p[0] == 'W' ? CM_White : CM_white;
+        break;
+    }
+    return -1;
+}
+
+static int parse(const char *str, int *start, int *len)
+{
+    const char *p = str + 1;
+    if (*p != '{')
+        return -1;
+    char *e = strchr(++p, '}');
+    if (!e)
+        return -1;
+    char *c = strchr(p, ':');
+    if (!c || c > e || c - p < 3)
+        return -1;
+    int clr = lookup_color(p, c-p);
+    if (clr >= 0) {
+        c++;
+        *start = c - str;
+        *len = e - c;
+    }
+    return clr;
+}
+
+char* cmfmt_parse(const char *fmt, char *cmfmt)
+{
+    const char *p;
+    int start, len, off = 0, tmp;
+    for (;;) {
+        printf("-->%s<--\n", fmt);
+        p = strchr(fmt, '%');
+        if (p) {
+            if ((len = p - fmt) > 0) {
+                printf("copy: %d: %s\n", len, fmt);
+                memcpy(cmfmt + off, fmt, len);
+                off += len;
+            }
+            fmt = p;
+            int clr = parse(fmt, &start, &len);
+            if (clr != -1) {
+                printf("color:%s start=%d len=%d\n", fg_clrs[clr].name, start, len);
+                p = fg_clrs[clr].val;
+                tmp = strlen(p);
+                memcpy(cmfmt + off, p, tmp);
+                off += tmp;
+                fmt += start;
+                memcpy(cmfmt + off, fmt, len);
+                off += len;
+                fmt += len + 1;
+                p = fg_clrs[CM_Reset].val;
+                tmp = strlen(p);
+                memcpy(cmfmt + off, p, tmp);
+                off += tmp;
+            } else {
+                printf("color:-1\n");
+                printf("copy %%\n");
+                cmfmt[off++] = *fmt;
+                fmt++;
+            }
+        } else {
+            printf("copy left: %s\n", fmt);
+            tmp = strlen(fmt) + 1;
+            memcpy(cmfmt + off, fmt, tmp);
+            break;
+        }
+    }
+    printf("off:%d\n", off);
+    for (int i=0; i<off; i++) {
+        printf("%02x<%c> ", cmfmt[i], cmfmt[i]);
+    }
+    printf("\n");
+    return cmfmt;
 }
 
 int cmMsg_(int (*print)(const char *, ...), const char *fmt, ...)
@@ -44,13 +174,16 @@ int cmMsg_(int (*print)(const char *, ...), const char *fmt, ...)
         return 0;
 
     int len = strlen(fmt) * 2;
-    char *cmfmt = alloca(len);
+    char *cmfmt = alloca(len < 1024 ? 1024 : len);
 
     va_start(args, fmt);
-    int rv = vasprintf(&msg, cmfmt_generate(fmt, cmfmt, len), args);
+    int rv = vasprintf(&msg, cmfmt_parse(fmt, cmfmt), args);
     va_end(args);
 
-    if (rv != -1)
+    if (rv != -1) {
         print("%s", msg);
+        free(msg);
+    }
+
     return rv;
 }
