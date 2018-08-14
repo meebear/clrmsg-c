@@ -123,54 +123,57 @@ static int parse(const char *str, int *start, int *len)
     return clr;
 }
 
-char* cmfmt_parse(const char *fmt, char *cmfmt)
+char* cmfmt_parse(const char *fmt, char *cmfmt, int with_color)
 {
     const char *p;
     int start, len, off = 0, tmp;
     int need_reset = 0;
     for (;;) {
-        printf("-->%s<--\n", fmt);
+        //printf("-->%s<--\n", fmt);
         p = strchr(fmt, '%');
         if (p) {
             if ((len = p - fmt) > 0) {
-                printf("copy: %d: %s\n", len, fmt);
+                //printf("copy: %d: %s\n", len, fmt);
                 memcpy(cmfmt + off, fmt, len);
                 off += len;
             }
             fmt = p;
             int clr = parse(fmt, &start, &len);
             if (clr != -1) {
-                printf("color:%s start=%d len=%d\n", fg_clrs[clr].name, start, len);
-                p = fg_clrs[clr].val;
-                tmp = strlen(p);
-                memcpy(cmfmt + off, p, tmp);
-                off += tmp;
+                //printf("color:%s start=%d len=%d\n", fg_clrs[clr].name, start, len);
+                if (with_color) {
+                    p = fg_clrs[clr].val;
+                    tmp = strlen(p);
+                    memcpy(cmfmt + off, p, tmp);
+                    off += tmp;
+                }
                 fmt += start;
                 if (len > 0) {
                     memcpy(cmfmt + off, fmt, len);
                     off += len;
                     fmt += len + 1;
-                    p = fg_clrs[CM_Reset].val;
-                    tmp = strlen(p);
-                    memcpy(cmfmt + off, p, tmp);
-                    off += tmp;
+                    if (with_color) {
+                        p = fg_clrs[CM_Reset].val;
+                        tmp = strlen(p);
+                        memcpy(cmfmt + off, p, tmp);
+                        off += tmp;
+                    }
                     need_reset = 0;
                 } else {
                     need_reset = 1;
                 }
             } else {
-                printf("color:-1\n");
-                printf("copy %%\n");
+                //printf("color:-1 copy %%\n");
                 cmfmt[off++] = *fmt;
                 fmt++;
             }
         } else {
-            printf("copy left: %s\n", fmt);
+            //printf("copy left: %s\n", fmt);
             if ((tmp = strlen(fmt)) > 0) {
                 memcpy(cmfmt + off, fmt, tmp);
                 off += tmp;
             }
-            if (need_reset) {
+            if (with_color && need_reset) {
                 p = fg_clrs[CM_Reset].val;
                 tmp = strlen(p);
                 memcpy(cmfmt + off, p, tmp);
@@ -195,7 +198,7 @@ int cmMsg_(int (*print)(const char *, ...), const char *fmt, ...)
     char *cmfmt = alloca(len < 1024 ? 1024 : len);
 
     va_start(args, fmt);
-    int rv = vasprintf(&msg, cmfmt_parse(fmt, cmfmt), args);
+    int rv = vasprintf(&msg, cmfmt_parse(fmt, cmfmt, 1), args);
     va_end(args);
 
     if (rv != -1) {
@@ -204,4 +207,17 @@ int cmMsg_(int (*print)(const char *, ...), const char *fmt, ...)
     }
 
     return rv;
+}
+
+const char* cmFmtClear(const char *fmt, char *newFmt, size_t sz)
+{
+    int len = strlen(fmt) * 2;
+    char *cmfmt = alloca(len < 1024 ? 1024 : len);
+    cmfmt_parse(fmt, cmfmt, 0);
+    len = strlen(cmfmt);
+    if (len >= sz)
+        len = sz - 1;
+    memcpy(newFmt, cmfmt, len);
+    newFmt[len] = '\0';
+    return newFmt;
 }

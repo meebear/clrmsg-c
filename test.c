@@ -3,6 +3,13 @@
 
 int main()
 {
-    cmMsg_(printf, "hello %{Red}world %{Cyan:cyan number %d} back to normal\n", 1000);
+    const char *cmf = "hello %{Red}world %{Cyan:cyan number %d} back to normal\n";
+    cmMsg_(printf, cmf, 1000);
+
+    char fmt[1024];
+    cmFmtClear(cmf, fmt, 1024);
+    printf(fmt, 1000);
+
+	cmDbg("debug message\n");
     return 0;
 }
