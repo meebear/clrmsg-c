@@ -64,14 +64,14 @@ static inline const char* _clr(int clr, int is_bg) {
 
 static const char* lookup_color(const char *p, int len, const char **bgclr)
 {
-    char c, *n=NULL, *at = memchr(p, '@', len);
+    char c, *n=NULL;
     int nlen=0;
     const char *fgclr = NULL;
     const char **clr;
 
-    //printf("at=%s\n", at);
     for (int i=0; i<2; i++) {
         if (i == 0) {
+            char *at = memchr(p, '@', len);
             if (at) {
                 nlen = p + len - at - 1;
                 n = at + 1;
@@ -103,6 +103,8 @@ static const char* lookup_color(const char *p, int len, const char **bgclr)
         case 'r':
             if (len <= 2 && !strncmp(p, "ed", len))
                 *clr = c == 'R' ? _clr(CM_Red, i) : _clr(CM_red, i);
+            if (len <= 4 && !strncmp(p, "eset", len))
+                *clr = _clr(CM_Reset, 0);
             break;
         case 'G':
         case 'g':
@@ -169,7 +171,7 @@ char* cmfmt_parse(const char *fmt, char *cmfmt, int with_color)
     int start=0, len, off=0, tmp;
     int need_reset = 0;
     for (;;) {
-        printf("-->%s<--\n", fmt);
+        //printf("-->%s<--\n", fmt);
         p = strchr(fmt, '%');
         if (p) {
             if ((len = p - fmt) > 0) {
@@ -180,7 +182,7 @@ char* cmfmt_parse(const char *fmt, char *cmfmt, int with_color)
             fmt = p;
             const char *bgclr = NULL;
             const char *fgclr = parse(fmt, &start, &len, &bgclr);
-            printf("fgclr=%p, bgclr=%p\n", fgclr, bgclr);
+            //printf("fgclr=%p, bgclr=%p\n", fgclr, bgclr);
             if (fgclr || bgclr) {
                 if (with_color) {
                     if (fgclr) {
