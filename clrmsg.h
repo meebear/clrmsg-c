@@ -21,28 +21,25 @@
 #define WHT_D "\033[2;37m"  // white
 #define RST   "\033[0m"     // Reset
 
-int cmMsg_(int (*print)(const char *fmt, ...), const char *fmt, ...);
+typedef int (*CmPrint)(const char *, ...);
+
+int cmMsg_(CmPrint print, const char *fmt, ...);
 
 const char* cmFmtClear(const char *fmt, char *newFmt, size_t sz);
 
+void cmSetPrtFunc(CmPrint print);
+
 #define cmPrintf(fmt, args...) cmMsg_(printf, fmt, ##args)
 
-#ifndef __STANDALONE_TEST__
-#include "debug.h"
-#define cm_print message
-#else
-#define cm_print printf
-#endif
-
 #define cmMsg(fmt, args...) \
-	cmMsg_(cm_print, fmt, ##args)
+	cmMsg_(NULL, fmt, ##args)
 #define cmInfo(fmt, args...) \
-	cmMsg_(cm_print, "%{Green:info} " fmt, ##args)
+	cmMsg_(NULL, "%{Green:info} " fmt, ##args)
 #define cmWarn(fmt, args...) \
-	cmMsg_(cm_print, "%{Yellow:warn} " fmt, ##args)
+	cmMsg_(NULL, "%{Yellow:warn} " fmt, ##args)
 #define cmErr(fmt, args...) \
-	cmMsg_(cm_print, "%{Red:err} " fmt, ##args)
+	cmMsg_(NULL, "%{Red:err} " fmt, ##args)
 #define cmDbg(fmt, args...) \
-	cmMsg_(cm_print, "%{Cyan:%s:%d} " fmt, __func__, __LINE__, ##args)
+	cmMsg_(NULL, "%{Cyan:%s:%d} " fmt, __func__, __LINE__, ##args)
 
 #endif

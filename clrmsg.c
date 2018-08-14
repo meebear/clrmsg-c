@@ -1,10 +1,19 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <alloca.h>
 #include "clrmsg.h"
+
+#ifndef __STANDALONE_TEST__
+#include "debug.h"
+static CmPrint _cm_print = message;
+#else
+static CmPrint _cm_print = printf;
+#endif
 
 enum {
     CM_Black,
@@ -128,7 +137,7 @@ static int parse(const char *str, int *start, int *len)
 char* cmfmt_parse(const char *fmt, char *cmfmt, int with_color)
 {
     const char *p;
-    int start, len, off = 0, tmp;
+    int start=0, len, off=0, tmp;
     int need_reset = 0;
     for (;;) {
         //printf("-->%s<--\n", fmt);
@@ -188,10 +197,11 @@ char* cmfmt_parse(const char *fmt, char *cmfmt, int with_color)
     return cmfmt;
 }
 
-int cmMsg_(int (*print)(const char *, ...), const char *fmt, ...)
+int cmMsg_(CmPrint print, const char *fmt, ...)
 {
     char *msg = NULL;
     va_list args;
+    CmPrint prt = print ?: _cm_print;
 
     if (!print || !fmt)
         return 0;
@@ -204,7 +214,7 @@ int cmMsg_(int (*print)(const char *, ...), const char *fmt, ...)
     va_end(args);
 
     if (rv != -1) {
-        print("%s", msg);
+        prt("%s", msg);
         free(msg);
     }
 
@@ -222,4 +232,9 @@ const char* cmFmtClear(const char *fmt, char *newFmt, size_t sz)
     memcpy(newFmt, cmfmt, len);
     newFmt[len] = '\0';
     return newFmt;
+}
+
+void cmSetPrtFunc(CmPrint print)
+{
+    _cm_print = print;
 }
