@@ -51,45 +51,46 @@ struct clr {
 
 static int lookup_color(const char *p, int len)
 {
-    switch (p[0]) {
+    char c = p[0];
+    p++;
+    len--;
+    switch (c) {
     case 'B':
     case 'b':
-        if (p[1] == 'l') {
-            if (p[2] == 'a')
-                return p[0] == 'B' ? CM_Black : CM_black;
-            else if (p[2] == 'u')
-                return p[0] == 'B' ? CM_Blue : CM_blue;
-        }
+        if (len <= 4 && !strncmp(p, "lack", len))
+            return c == 'B' ? CM_Black : CM_black;
+        if (len <= 3 && !strncmp(p, "lue", len))
+            return c == 'B' ? CM_Blue : CM_blue;
         break;
     case 'R':
     case 'r':
-        if (p[1] == 'e' && p[2] == 'd')
-            return p[0] == 'R' ? CM_Red : CM_red;
+        if (len <= 2 && !strncmp(p, "ed", len))
+            return c == 'R' ? CM_Red : CM_red;
         break;
     case 'G':
     case 'g':
-        if (p[1] == 'r' && p[2] == 'e')
-            return p[0] == 'G' ? CM_Green : CM_green;
+        if (len <= 4 && !strncmp(p, "reen", len))
+            return c == 'G' ? CM_Green : CM_green;
         break;
     case 'Y':
     case 'y':
-        if (p[1] == 'e' && p[2] == 'l')
-            return p[0] == 'Y' ? CM_Yellow : CM_yellow;
+        if (len <= 5 && !strncmp(p, "ellow", len))
+            return c == 'Y' ? CM_Yellow : CM_yellow;
         break;
     case 'M':
     case 'm':
-        if (p[1] == 'a' && p[2] == 'g')
-            return p[0] == 'M' ? CM_Magenta : CM_magenta;
+        if (len <= 6 && !strncmp(p, "agenta", len))
+            return c == 'M' ? CM_Magenta : CM_magenta;
         break;
     case 'C':
     case 'c':
-        if (p[1] == 'y' && p[2] == 'a')
-            return p[0] == 'C' ? CM_Cyan : CM_cyan;
+        if (len <= 3 && !strncmp(p, "yan", len))
+            return c == 'C' ? CM_Cyan : CM_cyan;
         break;
     case 'W':
     case 'w':
-        if (p[1] == 'h' && p[2] == 'i')
-            return p[0] == 'W' ? CM_White : CM_white;
+        if (len <= 4 && !strncmp(p, "hite", len))
+            return c == 'W' ? CM_White : CM_white;
         break;
     }
     return -1;
@@ -104,13 +105,20 @@ static int parse(const char *str, int *start, int *len)
     if (!e)
         return -1;
     char *c = strchr(p, ':');
-    if (!c || c > e || c - p < 3)
-        return -1;
-    int clr = lookup_color(p, c-p);
-    if (clr >= 0) {
-        c++;
-        *start = c - str;
-        *len = e - c;
+    int clr;
+    if (c && c < e) {
+        clr = lookup_color(p, c-p);
+        if (clr >= 0) {
+            c++;
+            *start = c - str;
+            *len = e - c;
+        }
+    } else {
+        clr = lookup_color(p, e-p);
+        if (clr >= 0) {
+            *start = e - str + 1;
+            *len = 0;
+        }
     }
     return clr;
 }
@@ -119,6 +127,7 @@ char* cmfmt_parse(const char *fmt, char *cmfmt)
 {
     const char *p;
     int start, len, off = 0, tmp;
+    int need_reset = 0;
     for (;;) {
         printf("-->%s<--\n", fmt);
         p = strchr(fmt, '%');
@@ -137,13 +146,18 @@ char* cmfmt_parse(const char *fmt, char *cmfmt)
                 memcpy(cmfmt + off, p, tmp);
                 off += tmp;
                 fmt += start;
-                memcpy(cmfmt + off, fmt, len);
-                off += len;
-                fmt += len + 1;
-                p = fg_clrs[CM_Reset].val;
-                tmp = strlen(p);
-                memcpy(cmfmt + off, p, tmp);
-                off += tmp;
+                if (len > 0) {
+                    memcpy(cmfmt + off, fmt, len);
+                    off += len;
+                    fmt += len + 1;
+                    p = fg_clrs[CM_Reset].val;
+                    tmp = strlen(p);
+                    memcpy(cmfmt + off, p, tmp);
+                    off += tmp;
+                    need_reset = 0;
+                } else {
+                    need_reset = 1;
+                }
             } else {
                 printf("color:-1\n");
                 printf("copy %%\n");
@@ -152,16 +166,20 @@ char* cmfmt_parse(const char *fmt, char *cmfmt)
             }
         } else {
             printf("copy left: %s\n", fmt);
-            tmp = strlen(fmt) + 1;
-            memcpy(cmfmt + off, fmt, tmp);
+            if ((tmp = strlen(fmt)) > 0) {
+                memcpy(cmfmt + off, fmt, tmp);
+                off += tmp;
+            }
+            if (need_reset) {
+                p = fg_clrs[CM_Reset].val;
+                tmp = strlen(p);
+                memcpy(cmfmt + off, p, tmp);
+                off += tmp;
+            }
+            cmfmt[off] = '\0';
             break;
         }
     }
-    printf("off:%d\n", off);
-    for (int i=0; i<off; i++) {
-        printf("%02x<%c> ", cmfmt[i], cmfmt[i]);
-    }
-    printf("\n");
     return cmfmt;
 }
 

@@ -3,6 +3,6 @@
 
 int main()
 {
-    cmMsg_(printf, "hello %{Red:red} %{Cyan:-+ ll  -+-} world\n");
+    cmMsg_(printf, "hello %{Red}world %{Cyan:cyan number %d} back to normal\n", 1000);
     return 0;
 }
