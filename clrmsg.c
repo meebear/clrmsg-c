@@ -94,15 +94,19 @@ static const char* lookup_color(const char *p, int len, const char **bgclr)
         switch (c) {
         case 'B':
         case 'b':
-            if (len <= 3 && !strncmp(p, "lue", len))
+            if (len <= 3 && !strncmp(p, "lue", len)) {
                 *clr = c == 'B' ? _clr(CM_Blue, i) : _clr(CM_blue, i);
+                break;
+            }
             if (len <= 4 && !strncmp(p, "lack", len))
                 *clr = c == 'B' ? _clr(CM_Black, i) : _clr(CM_black, i);
             break;
         case 'R':
         case 'r':
-            if (len <= 2 && !strncmp(p, "ed", len))
+            if (len <= 2 && !strncmp(p, "ed", len)) {
                 *clr = c == 'R' ? _clr(CM_Red, i) : _clr(CM_red, i);
+                break;
+            }
             if (len <= 4 && !strncmp(p, "eset", len))
                 *clr = _clr(CM_Reset, 0);
             break;

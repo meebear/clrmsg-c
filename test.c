@@ -4,7 +4,7 @@
 int main()
 {
     const char *cmf =
-		"hello %{m:world} %{g:cyan number %d}\n";
-    cmPrintf(cmf, 10.00);
+		"%{r:hello} %{b:world} -- %{C:c}%{B:o}%{M:l}%{R:o}%{Y:r}%{C:f}%{G:u}%{W:l}\n";
+    cmPrintf(cmf);
     return 0;
 }
