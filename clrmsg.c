@@ -241,7 +241,7 @@ int cmMsg_(CmPrint print, const char *fmt, ...)
     va_list args;
     CmPrint prt = print ?: _cm_print;
 
-    if (!print || !fmt)
+    if (!prt || !fmt)
         return 0;
 
     int len = strlen(fmt) * 2;
